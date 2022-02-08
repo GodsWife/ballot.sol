@@ -1,0 +1,96 @@
+pragma solidity ^0.4.2;
+
+contract Ballot {
+
+    struct Voter {
+        uint weight;
+        bool voted;
+        Proposal vote;
+        address delegate;
+    }
+    struct Proposal {
+        string name;
+        string desc;
+        uint voteCount;
+    }
+
+    address chairperson;
+    mapping(address => Voter) voters;
+    Proposal[] public proposals;
+    
+    string public voteName;
+
+    /// Create a new ballot with $(_numProposals) different proposals.
+    function Ballot(string votename) {
+        chairperson = msg.sender;
+        voters[chairperson].weight = 1;
+        //proposals.length = _numProposals;
+        voteName = votename;
+    }
+    
+    function addProposal(string propsalname, string desc){
+        if(msg.sender != chairperson){
+            return;
+        }
+        proposals.push(Proposal({
+                name: propsalname,
+                desc: desc,
+                voteCount: 0
+            }));
+    }
+
+    /// Give $(voter) the right to vote on this ballot.
+    /// May only be called by $(chairperson).
+    function giveRightToVote(address voter) {
+        if (msg.sender != chairperson || voters[voter].voted) return;
+        voters[voter].weight = 1;
+    }
+
+
+    /// Give a single vote to proposal $(proposal).
+    function vote(string proposalname) {
+        Voter sender = voters[msg.sender];
+        if (sender.voted) return;
+        bool find = false;
+        for(uint i=0;i<proposals.length;i++){
+            if(equal(proposals[i].name , proposalname)){
+                sender.voted = true;
+                sender.vote = proposals[i];
+                proposals[i].voteCount += sender.weight;
+            }
+        }
+        return;
+    }
+
+    function winningProposal() constant returns (uint8 winningProposal) {
+        uint256 winningVoteCount = 0;
+        for (uint8 proposal = 0; proposal < proposals.length; proposal++)
+            if (proposals[proposal].voteCount > winningVoteCount) {
+                winningVoteCount = proposals[proposal].voteCount;
+                winningProposal = proposal;
+            }
+    }
+    
+    function compare(string _a, string _b) private returns (int) {
+        bytes memory a = bytes(_a);
+        bytes memory b = bytes(_b);
+        uint minLength = a.length;
+        if (b.length < minLength) minLength = b.length;
+        //@todo unroll the loop into increments of 32 and do full 32 byte comparisons
+        for (uint i = 0; i < minLength; i ++)
+            if (a[i] < b[i])
+                return -1;
+            else if (a[i] > b[i])
+                return 1;
+        if (a.length < b.length)
+            return -1;
+        else if (a.length > b.length)
+            return 1;
+        else
+            return 0;
+    }
+    /// @dev Compares two strings and returns true iff they are equal.
+    function equal(string _a, string _b) private returns (bool) {
+        return compare(_a, _b) == 0;
+    }
+}
